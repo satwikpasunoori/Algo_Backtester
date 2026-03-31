@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────
+#  ALGO MACHINE — docker-compose.yml
+#  Run with:  docker compose up -d
+#  Dashboard: http://localhost:8000
+# ─────────────────────────────────────────────────────────────
+
+services:
+  algo-machine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: algo-machine
+    ports:
+      - "8000:8000"
+
+    # ── Persistent storage ──────────────────────────────────
+    volumes:
+      # SQLite database survives container restarts
+      - algo-db:/data/db
+      # Downloaded strategy .py files persist on host
+      - algo-strategies:/data/strategies
+
+    # ── Credentials — edit .env before running ──────────────
+    env_file:
+      - .env
+
+    # ── Extra env overrides ─────────────────────────────────
+    environment:
+      - DB_PATH=/data/db/algo_machine.db
+      - OUTPUT_DIR=/data/strategies
+      - PORT=8000
+
+    # ── Health & restart ────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    restart: unless-stopped
+
+    # ── Resource limits (optional, tune to your machine) ────
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+# ── Named volumes (Docker manages these) ─────────────────────
+volumes:
+  algo-db:
+    name: algo-machine-db
+  algo-strategies:
+    name: algo-machine-strategies
